@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, render_template_string
 from openai import OpenAI
 import os
+from dotenv import load_dotenv
 import json
 import time  # For simulating delay during testing
 
@@ -14,12 +15,15 @@ structure, precision, model-specific optimizations, and guardrails.
 Copyright (c) 2025 Purav Bhardwaj
 """
 
+# Load environment variables
+load_dotenv()
+
 # Create Flask application
 app = Flask(__name__)
 
 # Initialize the custom OpenAI client
 client = OpenAI(
-    api_key='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'
+    api_key=os.getenv('API_KEY')
 )
 
 # Model-specific guidance
