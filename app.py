@@ -200,7 +200,6 @@ BASE_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <title>dePrompt - AI Prompt Engineering Assistant</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-E3QSCYVVRG"></script>
     <script>
@@ -1162,23 +1161,18 @@ def about():
 # AJAX endpoint for prompt improvement
 @app.route("/improve_prompt", methods=["POST"])
 def improve_prompt():
-    try:
-        # Simulate delay for testing so the loader cycles through messages
-        time.sleep(3)
-        
-        context = request.form.get("context", "")
-        original_prompt = request.form.get("prompt", "")
-        target_model = request.form.get("target_model", "")
+    # Simulate delay for testing so the loader cycles through messages
+    time.sleep(3)
+    
+    context = request.form.get("context", "")
+    original_prompt = request.form.get("prompt", "")
+    target_model = request.form.get("target_model", "")
 
-        # Log the API key validation (without printing the actual key)
-        print(f"API Key validation: {'Valid' if api_key else 'Invalid'}")
-        
-        # Analyze the context for requirements and quality factors
-        try:
-            context_analysis = client.chat.completions.create(
-                model="o3-mini",
-                messages=[
-                    {"role": "system", "content": """You are an expert at analyzing technical contexts and requirements.
+    # Analyze the context for requirements and quality factors
+    context_analysis = client.chat.completions.create(
+        model="o3-mini",
+        messages=[
+            {"role": "system", "content": """You are an expert at analyzing technical contexts and requirements.
 Analyze the given context and prompt to extract key requirements, constraints, and objectives.
 Format your response as JSON with the following structure:
 {
@@ -1207,44 +1201,23 @@ For "format_requirements", include specific formatting needs like:
 - Necessary structure (lists, paragraphs, code blocks)
 - Length considerations (concise vs. detailed)
 - Tone and style requirements"""},
-                    {"role": "user", "content": f"Context: {context}\nOriginal Prompt: {original_prompt}\n\nAnalyze this context and prompt to understand the requirements and constraints."}
-                ]
-            )
-        except Exception as analysis_error:
-            print(f"Error during context analysis: {str(analysis_error)}")
-            return jsonify({"html": f"""
-                <h2 style="color: var(--ds-text-selected, #DEEBFF); margin-bottom: 32px;"><span class="brand-prefix">de</span>Prompt Error</h2>
-                <div class="error-message">
-                    <p>There was an error analyzing your prompt context: {str(analysis_error)}</p>
-                    <p>Please check that your API key is valid and has access to the required models.</p>
-                </div>
-                <a href="/" class="back-link">Try Again</a>
-            """})
+            {"role": "user", "content": f"Context: {context}\nOriginal Prompt: {original_prompt}\n\nAnalyze this context and prompt to understand the requirements and constraints."}
+        ]
+    )
 
-        # Parse and trim context analysis output
-        try:
-            analysis = json.loads(context_analysis.choices[0].message.content)
-            analysis['domain'] = analysis['domain'].strip()
-            analysis['complexity_level'] = analysis['complexity_level'].strip()
-            analysis['critical_requirements'] = [req.strip() for req in analysis['critical_requirements']]
-            analysis['constraints'] = [c.strip() for c in analysis.get('constraints', [])]
-            analysis['success_criteria'] = [s.strip() for s in analysis.get('success_criteria', [])]
-            analysis['risk_factors'] = [r.strip() for r in analysis.get('risk_factors', [])]
-            analysis['format_type'] = analysis.get('format_type', 'other').strip()
-            analysis['format_requirements'] = [f.strip() for f in analysis.get('format_requirements', [])]
-        except Exception as parsing_error:
-            print(f"Error parsing context analysis: {str(parsing_error)}")
-            return jsonify({"html": f"""
-                <h2 style="color: var(--ds-text-selected, #DEEBFF); margin-bottom: 32px;"><span class="brand-prefix">de</span>Prompt Error</h2>
-                <div class="error-message">
-                    <p>There was an error processing the analysis results: {str(parsing_error)}</p>
-                    <p>Please try again with a more specific prompt or context.</p>
-                </div>
-                <a href="/" class="back-link">Try Again</a>
-            """})
+    # Parse and trim context analysis output
+    analysis = json.loads(context_analysis.choices[0].message.content)
+    analysis['domain'] = analysis['domain'].strip()
+    analysis['complexity_level'] = analysis['complexity_level'].strip()
+    analysis['critical_requirements'] = [req.strip() for req in analysis['critical_requirements']]
+    analysis['constraints'] = [c.strip() for c in analysis.get('constraints', [])]
+    analysis['success_criteria'] = [s.strip() for s in analysis.get('success_criteria', [])]
+    analysis['risk_factors'] = [r.strip() for r in analysis.get('risk_factors', [])]
+    analysis['format_type'] = analysis.get('format_type', 'other').strip()
+    analysis['format_requirements'] = [f.strip() for f in analysis.get('format_requirements', [])]
 
-        # Prepare system message with explicit instructions for output sections
-        system_message = f"""You are an expert prompt engineer with deep understanding of LLM capabilities and limitations.
+    # Prepare system message with explicit instructions for output sections
+    system_message = f"""You are an expert prompt engineer with deep understanding of LLM capabilities and limitations.
 
 CONTEXT ANALYSIS:
 Domain: {analysis['domain']}
@@ -1340,51 +1313,26 @@ Your task is to substantially improve the provided prompt by incorporating:
 
 Your improved prompt must be clearly superior to the original in structure, clarity, specificity, and alignment with the target model's capabilities while maintaining an appropriate format for the specific use case.
 """
+    improvement_response = client.chat.completions.create(
+        model="o3-mini",
+        messages=[
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": f"Original Prompt: {original_prompt}"}
+        ]
+    )
 
-        # Call the OpenAI API to improve the prompt
-        try:
-            improvement_response = client.chat.completions.create(
-                model="o3-mini",
-                messages=[
-                    {"role": "system", "content": system_message},
-                    {"role": "user", "content": f"Original Prompt: {original_prompt}"}
-                ]
-            )
-        except Exception as improvement_error:
-            print(f"Error during prompt improvement: {str(improvement_error)}")
-            return jsonify({"html": f"""
-                <h2 style="color: var(--ds-text-selected, #DEEBFF); margin-bottom: 32px;"><span class="brand-prefix">de</span>Prompt Error</h2>
-                <div class="error-message">
-                    <p>There was an error enhancing your prompt: {str(improvement_error)}</p>
-                    <p>Please check that your API key is valid and has access to the required models.</p>
-                </div>
-                <a href="/" class="back-link">Try Again</a>
-            """})
-
-        # Split the response into sections
-        try:
-            sections = improvement_response.choices[0].message.content.split("---")
-            improved_prompt = sections[0].strip().replace("[Improved Prompt]", "").strip() if len(sections) >= 1 else "No improved prompt provided."
-        
-            # If there's no explanation provided, generate one
-            explanation = sections[1].strip().replace("[Explanation of Changes]", "").strip() if len(sections) >= 2 and sections[1].strip() else ""
-        except Exception as parsing_error:
-            print(f"Error parsing improvement response: {str(parsing_error)}")
-            return jsonify({"html": f"""
-                <h2 style="color: var(--ds-text-selected, #DEEBFF); margin-bottom: 32px;"><span class="brand-prefix">de</span>Prompt Error</h2>
-                <div class="error-message">
-                    <p>There was an error processing the enhanced prompt: {str(parsing_error)}</p>
-                    <p>Please try again with a simpler prompt.</p>
-                </div>
-                <a href="/" class="back-link">Try Again</a>
-            """})
-        
-        if not explanation or explanation == "No explanation provided.":
-            try:
-                explanation_response = client.chat.completions.create(
-                    model="o3-mini",
-                    messages=[
-                        {"role": "system", "content": """You are an expert prompt engineer tasked with explaining improvements made to AI prompts.
+    # Split the response into sections
+    sections = improvement_response.choices[0].message.content.split("---")
+    improved_prompt = sections[0].strip().replace("[Improved Prompt]", "").strip() if len(sections) >= 1 else "No improved prompt provided."
+    
+    # If there's no explanation provided, generate one
+    explanation = sections[1].strip().replace("[Explanation of Changes]", "").strip() if len(sections) >= 2 and sections[1].strip() else ""
+    
+    if not explanation or explanation == "No explanation provided.":
+        explanation_response = client.chat.completions.create(
+            model="o3-mini",
+            messages=[
+                {"role": "system", "content": """You are an expert prompt engineer tasked with explaining improvements made to AI prompts.
                 
 Analyze the original and improved prompts, then provide a detailed explanation of the changes and their benefits.
 Focus on:
@@ -1395,23 +1343,19 @@ Focus on:
 5. Guardrails and error prevention
 
 Your explanation should be thorough yet concise, highlighting the most significant improvements and their expected impact."""},
-                        {"role": "user", "content": f"Original Prompt:\n{original_prompt}\n\nImproved Prompt:\n{improved_prompt}\n\nExplain the key improvements made and why they matter."}
-                    ]
-                )
-                explanation = explanation_response.choices[0].message.content.strip()
-            except Exception as explanation_error:
-                print(f"Error generating explanation: {str(explanation_error)}")
-                explanation = "Error generating explanation. Please focus on the improved prompt itself."
-        
-        # If there's no additional considerations provided, generate them
-        considerations = sections[2].strip().replace("[Additional Considerations]", "").strip() if len(sections) >= 3 and sections[2].strip() else ""
-        
-        if not considerations or considerations == "No additional considerations provided.":
-            try:
-                considerations_response = client.chat.completions.create(
-                    model="o3-mini",
-                    messages=[
-                        {"role": "system", "content": """You are an expert prompt engineer tasked with providing additional considerations for AI prompts.
+                {"role": "user", "content": f"Original Prompt:\n{original_prompt}\n\nImproved Prompt:\n{improved_prompt}\n\nExplain the key improvements made and why they matter."}
+            ]
+        )
+        explanation = explanation_response.choices[0].message.content.strip()
+    
+    # If there's no additional considerations provided, generate them
+    considerations = sections[2].strip().replace("[Additional Considerations]", "").strip() if len(sections) >= 3 and sections[2].strip() else ""
+    
+    if not considerations or considerations == "No additional considerations provided.":
+        considerations_response = client.chat.completions.create(
+            model="o3-mini",
+            messages=[
+                {"role": "system", "content": """You are an expert prompt engineer tasked with providing additional considerations for AI prompts.
                 
 After reviewing the original and improved prompts, provide specific additional considerations that might help the user.
 Focus on:
@@ -1422,20 +1366,16 @@ Focus on:
 5. Fallback strategies for edge cases
 
 Your considerations should be practical, specific, and immediately useful to the prompt user."""},
-                        {"role": "user", "content": f"Original Prompt:\n{original_prompt}\n\nImproved Prompt:\n{improved_prompt}\n\nTarget Model: {target_model}\n\nProvide additional considerations that would be helpful."}
-                    ]
-                )
-                considerations = considerations_response.choices[0].message.content.strip()
-            except Exception as considerations_error:
-                print(f"Error generating considerations: {str(considerations_error)}")
-                considerations = "Error generating additional considerations. Please focus on the improved prompt itself."
+                {"role": "user", "content": f"Original Prompt:\n{original_prompt}\n\nImproved Prompt:\n{improved_prompt}\n\nTarget Model: {target_model}\n\nProvide additional considerations that would be helpful."}
+            ]
+        )
+        considerations = considerations_response.choices[0].message.content.strip()
 
-        # Enhanced validation for improved quality assessment
-        try:
-            validation_response = client.chat.completions.create(
-                model="o3-mini",
-                messages=[
-                    {"role": "system", "content": """Conduct a rigorous evaluation of the improved prompt against the original prompt and requirements.
+    # Enhanced validation for improved quality assessment
+    validation_response = client.chat.completions.create(
+        model="o3-mini",
+        messages=[
+            {"role": "system", "content": """Conduct a rigorous evaluation of the improved prompt against the original prompt and requirements.
             
 Assessment criteria (rate each on scale of 1-10):
 
@@ -1475,67 +1415,54 @@ Assessment criteria (rate each on scale of 1-10):
 Provide a final confidence score (0-1) with two decimal precision and specific recommendations for any remaining improvements.
 
 IMPORTANT: If the enhanced prompt is overly verbose, too essay-like, or uses a structure inappropriate for the domain, flag this issue and suggest specific improvements."""},
-                    {"role": "user", "content": f"Original Context: {context}\nOriginal Prompt: {original_prompt}\nImproved Prompt: {improved_prompt}\nRequirements: {json.dumps(analysis)}\nTarget Model: {target_model}\nDomain: {analysis['domain']}\n\nConduct a comprehensive evaluation."}
-                ]
-            )
-            validation_result = validation_response.choices[0].message.content
-        except Exception as validation_error:
-            print(f"Error during validation: {str(validation_error)}")
-            validation_result = "Error generating validation. Please evaluate the prompt quality yourself."
+            {"role": "user", "content": f"Original Context: {context}\nOriginal Prompt: {original_prompt}\nImproved Prompt: {improved_prompt}\nRequirements: {json.dumps(analysis)}\nTarget Model: {target_model}\nDomain: {analysis['domain']}\n\nConduct a comprehensive evaluation."}
+        ]
+    )
+    validation_result = validation_response.choices[0].message.content
 
-        content = f"""
-            <h2 style="color: var(--ds-text-selected, #DEEBFF); margin-bottom: 32px;"><span class="brand-prefix">de</span>Prompt Results</h2>
-            
-            <div class="improved-prompt" style="margin-top: 16px;">
-                <div class="content">{improved_prompt}</div>
-            </div>
-            
-            <div class="info-grid">
-                <div class="info-card">
-                    <div class="card-title">Context Analysis</div>
-                    <div class="content">
-                        <strong>Domain:</strong> {analysis['domain']}<br>
-                        <strong>Format Type:</strong> {analysis['format_type']}<br>
-                        <strong>Complexity:</strong> {analysis['complexity_level']}<br>
-                        <strong>Critical Requirements:</strong><br>
-                        {"<br>".join(f"• {req}" for req in analysis['critical_requirements'])}
-                        <br><br>
-                        <strong>Format Requirements:</strong><br>
-                        {"<br>".join(f"• {req}" for req in analysis['format_requirements'])}
-                    </div>
-                </div>
-
-                <div class="info-card">
-                    <div class="card-title">Explanation of Changes</div>
-                    <div class="content">{explanation}</div>
-                </div>
-                
-                <div class="info-card">
-                    <div class="card-title">Additional Considerations</div>
-                    <div class="content">{considerations}</div>
-                </div>
-
-                <div class="info-card">
-                    <div class="card-title">Validation Results</div>
-                    <div class="content">{validation_result}</div>
+    content = f"""
+        <h2 style="color: var(--ds-text-selected, #DEEBFF); margin-bottom: 32px;"><span class="brand-prefix">de</span>Prompt Results</h2>
+        
+        <div class="improved-prompt" style="margin-top: 16px;">
+            <div class="content">{improved_prompt}</div>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="card-title">Context Analysis</div>
+                <div class="content">
+                    <strong>Domain:</strong> {analysis['domain']}<br>
+                    <strong>Format Type:</strong> {analysis['format_type']}<br>
+                    <strong>Complexity:</strong> {analysis['complexity_level']}<br>
+                    <strong>Critical Requirements:</strong><br>
+                    {"<br>".join(f"• {req}" for req in analysis['critical_requirements'])}
+                    <br><br>
+                    <strong>Format Requirements:</strong><br>
+                    {"<br>".join(f"• {req}" for req in analysis['format_requirements'])}
                 </div>
             </div>
-            
-            <a href="/" class="back-link">Create Another Prompt</a>
-        """
 
-        # Return the inner content as JSON (to be injected via AJAX)
-        return jsonify({"html": content})
-    except Exception as e:
-        print(f"Unexpected error in improve_prompt: {str(e)}")
-        return jsonify({"html": f"""
-            <h2 style="color: var(--ds-text-selected, #DEEBFF); margin-bottom: 32px;"><span class="brand-prefix">de</span>Prompt Error</h2>
-            <div class="error-message">
-                <p>There was an unexpected error: {str(e)}</p>
-                <p>Please try again later or contact support if the problem persists.</p>
+            <div class="info-card">
+                <div class="card-title">Explanation of Changes</div>
+                <div class="content">{explanation}</div>
             </div>
-            <a href="/" class="back-link">Try Again</a>
-        """})
+            
+            <div class="info-card">
+                <div class="card-title">Additional Considerations</div>
+                <div class="content">{considerations}</div>
+            </div>
+
+            <div class="info-card">
+                <div class="card-title">Validation Results</div>
+                <div class="content">{validation_result}</div>
+            </div>
+        </div>
+        
+        <a href="/" class="back-link">Create Another Prompt</a>
+    """
+
+    # Return the inner content as JSON (to be injected via AJAX)
+    return jsonify({"html": content})
 
 # API endpoint for generating conversation questions
 @app.route("/generate_question", methods=["POST"])
