@@ -21,9 +21,14 @@ load_dotenv()
 # Create Flask application
 app = Flask(__name__)
 
+# Get API key and verify it exists
+api_key = os.getenv('API_KEY')
+if not api_key:
+    raise ValueError("API_KEY environment variable is not set")
+
 # Initialize the custom OpenAI client
 client = OpenAI(
-    api_key=os.getenv('API_KEY')
+    api_key=api_key
 )
 
 # Model-specific guidance
