@@ -1135,7 +1135,7 @@ def about():
                 <div class="about-card-title">
                     <div class="about-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
                         </svg>
                     </div>
                     Who needs <span class="brand-prefix">de</span>Prompt?
@@ -1182,8 +1182,25 @@ Format your response as JSON with the following structure:
     "success_criteria": ["list of what makes a good response"],
     "risk_factors": ["potential issues to address"],
     "complexity_level": "low|medium|high",
+    "format_type": "coding|creative|analytical|conversational|academic|other",
+    "format_requirements": ["specific formatting needs for this domain"],
     "confidence_score": 0.0-1.0
-}"""},
+}
+
+For the "format_type" field, choose the most appropriate value:
+- "coding": For programming, technical documentation, or algorithmic tasks
+- "creative": For storytelling, content creation, or artistic prompts
+- "analytical": For data analysis, research, or problem-solving tasks
+- "conversational": For chatbots, customer service, or dialogue-based tasks
+- "academic": For educational, scholarly, or formal writing tasks
+- "other": For any domain not fitting above (specify details in format_requirements)
+
+For "format_requirements", include specific formatting needs like:
+- Use of technical language or terminology
+- Need for examples or demonstrations
+- Necessary structure (lists, paragraphs, code blocks)
+- Length considerations (concise vs. detailed)
+- Tone and style requirements"""},
             {"role": "user", "content": f"Context: {context}\nOriginal Prompt: {original_prompt}\n\nAnalyze this context and prompt to understand the requirements and constraints."}
         ]
     )
@@ -1196,6 +1213,8 @@ Format your response as JSON with the following structure:
     analysis['constraints'] = [c.strip() for c in analysis.get('constraints', [])]
     analysis['success_criteria'] = [s.strip() for s in analysis.get('success_criteria', [])]
     analysis['risk_factors'] = [r.strip() for r in analysis.get('risk_factors', [])]
+    analysis['format_type'] = analysis.get('format_type', 'other').strip()
+    analysis['format_requirements'] = [f.strip() for f in analysis.get('format_requirements', [])]
 
     # Prepare system message with explicit instructions for output sections
     system_message = f"""You are an expert prompt engineer with deep understanding of LLM capabilities and limitations.
@@ -1207,25 +1226,58 @@ Constraints: {', '.join(analysis['constraints'])}
 Success Criteria: {', '.join(analysis['success_criteria'])}
 Risk Factors: {', '.join(analysis['risk_factors'])}
 Complexity: {analysis['complexity_level']}
+Format Type: {analysis['format_type']}
+Format Requirements: {', '.join(analysis['format_requirements'])}
 
 TARGET MODEL CHARACTERISTICS:
 {model_guidance.get(target_model, {}).get('considerations', 'General purpose model')}
 
+PROMPT FORMAT GUIDANCE:
+Based on the domain "{analysis['domain']}", format type "{analysis['format_type']}", and complexity level "{analysis['complexity_level']}", adjust your output format:
+
+1. For coding/technical tasks:
+   - Use concise, precise language
+   - Include code-like structure with clear delimiters
+   - Specify input/output formats explicitly
+   - Use markdown code blocks for examples
+
+2. For creative writing tasks:
+   - Use more open-ended framing
+   - Include inspirational elements
+   - Balance constraints with creative freedom
+   - Avoid overly rigid structure
+
+3. For analytical/data tasks:
+   - Use clear step-by-step guidance
+   - Specify data handling expectations
+   - Include validation checkpoints
+   - Structure with numbered lists for clarity
+
+4. For conversational/customer service tasks:
+   - Use concise dialogue-like format
+   - Include tone and style guidance
+   - Structure with clear scenarios
+   - Minimize verbose explanatory text
+
+5. For academic/research tasks:
+   - Use precise terminology
+   - Structure with clear research methodology
+   - Include citation/reference expectations
+   - Balance detail with clarity
+
 Your task is to substantially improve the provided prompt by incorporating:
 
 1. STRUCTURAL ELEMENTS:
-   - Clear, hierarchical organization with proper formatting
-   - Explicit section headers where appropriate
-   - Numbered steps for complex instructions
-   - Contextual framing at the beginning
-   - Specific output format instructions
+   - Clear organization appropriate to the domain
+   - Format matching the task's nature (avoid one-size-fits-all structures)
+   - Context-appropriate framing that matches actual use case
+   - Output format instructions tailored to the specific domain
 
 2. PRECISION TECHNIQUES:
-   - Detailed constraints and boundary conditions
-   - Specific examples demonstrating expected outputs
-   - Quantitative metrics where applicable
-   - Explicit reasoning steps for complex tasks
-   - Clear success criteria definition
+   - Domain-specific constraints and terminology
+   - Specific examples demonstrating expected outputs for this context
+   - Quantitative metrics where applicable to this domain
+   - Clear success criteria definition relevant to this use case
 
 3. MODEL-SPECIFIC OPTIMIZATIONS:
    - {model_guidance.get(target_model, {}).get('considerations', 'General model guidance')}
@@ -1238,6 +1290,13 @@ Your task is to substantially improve the provided prompt by incorporating:
    - Explicit handling of edge cases
    - Confidence scoring or uncertainty indicators
    - Fallback mechanisms when appropriate
+
+**IMPORTANT FORMATTING INSTRUCTIONS:**
+1. Match your formatting to the domain and purpose
+2. Avoid unnecessarily verbose or essay-like structures
+3. Use formatting (bullet points, numbering, etc.) appropriate to the context
+4. For simple prompts, keep enhancements simple and focused
+5. For complex prompts, use appropriate structure without overcomplicating
 
 **IMPORTANT:** Your response must include the following sections exactly as shown below:
 
@@ -1252,7 +1311,7 @@ Your task is to substantially improve the provided prompt by incorporating:
 [Additional Considerations]
 ...Any further notes or fallback recommendations...
 
-Your improved prompt must be clearly superior to the original in structure, clarity, specificity, and alignment with the target model's capabilities.
+Your improved prompt must be clearly superior to the original in structure, clarity, specificity, and alignment with the target model's capabilities while maintaining an appropriate format for the specific use case.
 """
     improvement_response = client.chat.completions.create(
         model="o3-mini",
@@ -1329,24 +1388,34 @@ Assessment criteria (rate each on scale of 1-10):
    - Is the prompt clearly organized?
    - Are instructions unambiguous?
    - Is appropriate formatting used?
+   - Does the structure match the domain and use case?
 
 3. PRECISION & SPECIFICITY
    - Are constraints clearly defined?
    - Are success criteria explicit?
    - Are examples included where helpful?
+   - Is domain-specific terminology used appropriately?
 
 4. MODEL APPROPRIATENESS
    - Does it match target model capabilities?
    - Is context length optimized?
    - Are model-specific techniques used?
 
-5. IMPROVEMENT DELTA
+5. CONTEXTUAL FIT
+   - How well does the format match the domain?
+   - Is the style appropriate (not too verbose/essay-like)?
+   - Is the complexity appropriate to the task?
+   - Would this prompt work well in actual use?
+
+6. IMPROVEMENT DELTA
    - How significant is the improvement?
    - What key weaknesses were addressed?
    - What metrics would likely improve?
 
-Provide a final confidence score (0-1) with two decimal precision and specific recommendations for any remaining improvements."""},
-            {"role": "user", "content": f"Original Context: {context}\nOriginal Prompt: {original_prompt}\nImproved Prompt: {improved_prompt}\nRequirements: {json.dumps(analysis)}\nTarget Model: {target_model}\n\nConduct a comprehensive evaluation."}
+Provide a final confidence score (0-1) with two decimal precision and specific recommendations for any remaining improvements.
+
+IMPORTANT: If the enhanced prompt is overly verbose, too essay-like, or uses a structure inappropriate for the domain, flag this issue and suggest specific improvements."""},
+            {"role": "user", "content": f"Original Context: {context}\nOriginal Prompt: {original_prompt}\nImproved Prompt: {improved_prompt}\nRequirements: {json.dumps(analysis)}\nTarget Model: {target_model}\nDomain: {analysis['domain']}\n\nConduct a comprehensive evaluation."}
         ]
     )
     validation_result = validation_response.choices[0].message.content
@@ -1363,9 +1432,13 @@ Provide a final confidence score (0-1) with two decimal precision and specific r
                 <div class="card-title">Context Analysis</div>
                 <div class="content">
                     <strong>Domain:</strong> {analysis['domain']}<br>
+                    <strong>Format Type:</strong> {analysis['format_type']}<br>
                     <strong>Complexity:</strong> {analysis['complexity_level']}<br>
                     <strong>Critical Requirements:</strong><br>
                     {"<br>".join(f"• {req}" for req in analysis['critical_requirements'])}
+                    <br><br>
+                    <strong>Format Requirements:</strong><br>
+                    {"<br>".join(f"• {req}" for req in analysis['format_requirements'])}
                 </div>
             </div>
 
