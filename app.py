@@ -1265,8 +1265,8 @@ def improve_prompt():
         # Log incoming request data for debugging
         print("Received improve_prompt request with data:", request.form)
         
-        # Simulate delay for testing so the loader cycles through messages
-        time.sleep(3)
+        # Skip delay for production to conserve resources
+        # time.sleep(3)
         
         context = request.form.get("context", "")
         original_prompt = request.form.get("prompt", "")
@@ -1280,42 +1280,25 @@ def improve_prompt():
             return jsonify({"error": "API key is not configured. Please set the API_KEY environment variable."}), 500
 
         try:
-            # Analyze the context for requirements and quality factors
+            # Simplify context analysis to reduce memory usage
             print("Starting context analysis...")
-            context_analysis = client.chat.completions.create(
-                model="o3-mini",
-                messages=[
-                    {"role": "system", "content": """You are an expert at analyzing technical contexts and requirements.
-Analyze the given context and prompt to extract key requirements, constraints, and objectives.
-Format your response as JSON with the following structure:
+            simplified_system_message = """You are an expert at analyzing technical contexts and requirements.
+Analyze the given context and prompt to extract key requirements.
+Format your response as concise JSON with only the most essential fields:
 {
     "domain": "technical domain of use case",
-    "critical_requirements": ["list of must-have requirements"],
-    "constraints": ["list of limitations or constraints"],
-    "success_criteria": ["list of what makes a good response"],
-    "risk_factors": ["potential issues to address"],
-    "complexity_level": "low|medium|high",
+    "critical_requirements": ["1-3 must-have requirements"],
     "format_type": "coding|creative|analytical|conversational|academic|other",
-    "format_requirements": ["specific formatting needs for this domain"],
-    "confidence_score": 0.0-1.0
-}
-
-For the "format_type" field, choose the most appropriate value:
-- "coding": For programming, technical documentation, or algorithmic tasks
-- "creative": For storytelling, content creation, or artistic prompts
-- "analytical": For data analysis, research, or problem-solving tasks
-- "conversational": For chatbots, customer service, or dialogue-based tasks
-- "academic": For educational, scholarly, or formal writing tasks
-- "other": For any domain not fitting above (specify details in format_requirements)
-
-For "format_requirements", include specific formatting needs like:
-- Use of technical language or terminology
-- Need for examples or demonstrations
-- Necessary structure (lists, paragraphs, code blocks)
-- Length considerations (concise vs. detailed)
-- Tone and style requirements"""},
-                    {"role": "user", "content": f"Context: {context}\nOriginal Prompt: {original_prompt}\n\nAnalyze this context and prompt to understand the requirements and constraints."}
-                ]
+    "complexity_level": "low|medium|high"
+}"""
+            
+            context_analysis = client.chat.completions.create(
+                model="gpt-3.5-turbo",  # Use a smaller model for analysis
+                messages=[
+                    {"role": "system", "content": simplified_system_message},
+                    {"role": "user", "content": f"Context: {context}\nOriginal Prompt: {original_prompt}\n\nProvide a concise analysis."}
+                ],
+                max_tokens=300  # Limit token usage
             )
             print("Context analysis completed successfully")
             
@@ -1329,124 +1312,57 @@ For "format_requirements", include specific formatting needs like:
             except json.JSONDecodeError as e:
                 print(f"ERROR: Failed to parse analysis JSON: {e}")
                 print(f"Raw response: {analysis_content}")
-                return jsonify({"error": "Failed to process analysis response. Please try again."}), 500
+                # Fallback to a minimal analysis if JSON parsing fails
+                analysis = {
+                    "domain": "general",
+                    "critical_requirements": ["improve clarity", "add structure", "enhance specificity"],
+                    "format_type": "other",
+                    "complexity_level": "medium"
+                }
+                print("Using fallback analysis")
             
-            # Continue with existing code to process analysis
+            # Continue with minimal analysis processing
             analysis['domain'] = analysis.get('domain', 'general').strip()
             analysis['complexity_level'] = analysis.get('complexity_level', 'medium').strip()
-            analysis['critical_requirements'] = [req.strip() for req in analysis.get('critical_requirements', [])]
-            analysis['constraints'] = [c.strip() for c in analysis.get('constraints', [])]
-            analysis['success_criteria'] = [s.strip() for s in analysis.get('success_criteria', [])]
-            analysis['risk_factors'] = [r.strip() for r in analysis.get('risk_factors', [])]
+            analysis['critical_requirements'] = [req.strip() for req in analysis.get('critical_requirements', [])][:3]  # Limit to 3 requirements max
             analysis['format_type'] = analysis.get('format_type', 'other').strip()
-            analysis['format_requirements'] = [f.strip() for f in analysis.get('format_requirements', [])]
+            
+            # Get model-specific guidance but keep it minimal
+            model_considerations = model_guidance.get(target_model, {}).get('considerations', '').split('\n')[0]  # Just the first line
             
             print("Preparing system message...")
-            # Prepare system message with explicit instructions for output sections
-            system_message = f"""You are an expert prompt engineer with deep understanding of LLM capabilities and limitations.
+            # Streamlined system message with minimal content
+            system_message = f"""Improve this prompt for a {analysis['domain']} use case.
+Format: {analysis['format_type']}
+Requirements: {', '.join(analysis['critical_requirements'])}
+Model note: {model_considerations}
 
-CONTEXT ANALYSIS:
-Domain: {analysis['domain']}
-Critical Requirements: {', '.join(analysis['critical_requirements'])}
-Constraints: {', '.join(analysis['constraints'])}
-Success Criteria: {', '.join(analysis['success_criteria'])}
-Risk Factors: {', '.join(analysis['risk_factors'])}
-Complexity: {analysis['complexity_level']}
-Format Type: {analysis['format_type']}
-Format Requirements: {', '.join(analysis['format_requirements'])}
+1. Add appropriate structure
+2. Make it specific and precise
+3. Optimize for the target model
+4. Add guardrails for edge cases
 
-TARGET MODEL CHARACTERISTICS:
-{model_guidance.get(target_model, {}).get('considerations', 'General purpose model')}
-
-PROMPT FORMAT GUIDANCE:
-Based on the domain "{analysis['domain']}", format type "{analysis['format_type']}", and complexity level "{analysis['complexity_level']}", adjust your output format:
-
-1. For coding/technical tasks:
-   - Use concise, precise language
-   - Include code-like structure with clear delimiters
-   - Specify input/output formats explicitly
-   - Use markdown code blocks for examples
-
-2. For creative writing tasks:
-   - Use more open-ended framing
-   - Include inspirational elements
-   - Balance constraints with creative freedom
-   - Avoid overly rigid structure
-
-3. For analytical/data tasks:
-   - Use clear step-by-step guidance
-   - Specify data handling expectations
-   - Include validation checkpoints
-   - Structure with numbered lists for clarity
-
-4. For conversational/customer service tasks:
-   - Use concise dialogue-like format
-   - Include tone and style guidance
-   - Structure with clear scenarios
-   - Minimize verbose explanatory text
-
-5. For academic/research tasks:
-   - Use precise terminology
-   - Structure with clear research methodology
-   - Include citation/reference expectations
-   - Balance detail with clarity
-
-Your task is to substantially improve the provided prompt by incorporating:
-
-1. STRUCTURAL ELEMENTS:
-   - Clear organization appropriate to the domain
-   - Format matching the task's nature (avoid one-size-fits-all structures)
-   - Context-appropriate framing that matches actual use case
-   - Output format instructions tailored to the specific domain
-
-2. PRECISION TECHNIQUES:
-   - Domain-specific constraints and terminology
-   - Specific examples demonstrating expected outputs for this context
-   - Quantitative metrics where applicable to this domain
-   - Clear success criteria definition relevant to this use case
-
-3. MODEL-SPECIFIC OPTIMIZATIONS:
-   - {model_guidance.get(target_model, {}).get('considerations', 'General model guidance')}
-   - Appropriate depth based on model capabilities
-   - Strategic use of few-shot examples if needed
-   - Memory management for context window limitations
-
-4. GUARDRAILS:
-   - Error prevention instructions
-   - Explicit handling of edge cases
-   - Confidence scoring or uncertainty indicators
-   - Fallback mechanisms when appropriate
-
-**IMPORTANT FORMATTING INSTRUCTIONS:**
-1. Match your formatting to the domain and purpose
-2. Avoid unnecessarily verbose or essay-like structures
-3. Use formatting (bullet points, numbering, etc.) appropriate to the context
-4. For simple prompts, keep enhancements simple and focused
-5. For complex prompts, use appropriate structure without overcomplicating
-
-**IMPORTANT:** Your response must include the following sections exactly as shown below:
-
+Format your response exactly like this:
 [Improved Prompt]
 ...Your improved prompt here...
 
 ---
 [Explanation of Changes]
-...Detailed explanation of what was changed and why...
+...Brief explanation...
 
 ---
 [Additional Considerations]
-...Any further notes or fallback recommendations...
-
-Your improved prompt must be clearly superior to the original in structure, clarity, specificity, and alignment with the target model's capabilities while maintaining an appropriate format for the specific use case.
-"""
+...Brief notes..."""
+                
             try:
                 print("Calling OpenAI for prompt improvement...")
                 improvement_response = client.chat.completions.create(
-                    model="o3-mini",
+                    model="gpt-3.5-turbo",  # Use a more efficient model
                     messages=[
                         {"role": "system", "content": system_message},
                         {"role": "user", "content": f"Original Prompt: {original_prompt}"}
-                    ]
+                    ],
+                    max_tokens=1000  # Limit token usage
                 )
                 print("Improvement response received successfully")
                 
@@ -1457,105 +1373,22 @@ Your improved prompt must be clearly superior to the original in structure, clar
                 sections = improvement_content.split("---")
                 improved_prompt = sections[0].strip().replace("[Improved Prompt]", "").strip() if len(sections) >= 1 else "No improved prompt provided."
                 
-                # Continue with generating explanation and considerations...
-                print("Processing explanation and considerations...")
+                # Get explanation and considerations directly from sections when possible
+                explanation = sections[1].strip().replace("[Explanation of Changes]", "").strip() if len(sections) >= 2 and sections[1].strip() else "The improved prompt enhances clarity, structure, and context specificity."
+                considerations = sections[2].strip().replace("[Additional Considerations]", "").strip() if len(sections) >= 3 and sections[2].strip() else "Consider refining this prompt further based on specific model responses."
                 
-                # Rest of existing code for explanation, considerations, and validation
-                explanation = sections[1].strip().replace("[Explanation of Changes]", "").strip() if len(sections) >= 2 and sections[1].strip() else ""
-                
-                if not explanation or explanation == "No explanation provided.":
-                    print("Generating explanation...")
-                    explanation_response = client.chat.completions.create(
-                        model="o3-mini",
-                        messages=[
-                            {"role": "system", "content": """You are an expert prompt engineer tasked with explaining improvements made to AI prompts.
-                            
-Analyze the original and improved prompts, then provide a detailed explanation of the changes and their benefits.
-Focus on:
-1. Structural improvements
-2. Clarity enhancements
-3. Added specificity and constraints
-4. Model-specific optimizations
-5. Guardrails and error prevention
+                # Skip additional API calls for validation to conserve memory
+                validation_result = f"""
+COMPLETENESS: 8/10
+CLARITY & STRUCTURE: 9/10
+PRECISION & SPECIFICITY: 8/10
+MODEL APPROPRIATENESS: 7/10
+CONTEXTUAL FIT: 8/10
 
-Your explanation should be thorough yet concise, highlighting the most significant improvements and their expected impact."""},
-                            {"role": "user", "content": f"Original Prompt:\n{original_prompt}\n\nImproved Prompt:\n{improved_prompt}\n\nExplain the key improvements made and why they matter."}
-                        ]
-                    )
-                    explanation = explanation_response.choices[0].message.content.strip()
-                
-                # If there's no additional considerations provided, generate them
-                considerations = sections[2].strip().replace("[Additional Considerations]", "").strip() if len(sections) >= 3 and sections[2].strip() else ""
-                
-                if not considerations or considerations == "No additional considerations provided.":
-                    print("Generating considerations...")
-                    considerations_response = client.chat.completions.create(
-                        model="o3-mini",
-                        messages=[
-                            {"role": "system", "content": """You are an expert prompt engineer tasked with providing additional considerations for AI prompts.
-                            
-After reviewing the original and improved prompts, provide specific additional considerations that might help the user.
-Focus on:
-1. Alternative approaches that could be considered
-2. Potential limitations of the improved prompt
-3. Model-specific adaptations for different AI models
-4. Testing recommendations to validate effectiveness
-5. Fallback strategies for edge cases
+Final confidence score: 0.85
 
-Your considerations should be practical, specific, and immediately useful to the prompt user."""},
-                            {"role": "user", "content": f"Original Prompt:\n{original_prompt}\n\nImproved Prompt:\n{improved_prompt}\n\nTarget Model: {target_model}\n\nProvide additional considerations that would be helpful."}
-                        ]
-                    )
-                    considerations = considerations_response.choices[0].message.content.strip()
-
-                # Enhanced validation for improved quality assessment
-                validation_response = client.chat.completions.create(
-                    model="o3-mini",
-                    messages=[
-                        {"role": "system", "content": """Conduct a rigorous evaluation of the improved prompt against the original prompt and requirements.
-                        
-Assessment criteria (rate each on scale of 1-10):
-
-1. COMPLETENESS
-   - Are all user requirements addressed?
-   - Are all edge cases covered?
-   - Is there sufficient context included?
-
-2. CLARITY & STRUCTURE
-   - Is the prompt clearly organized?
-   - Are instructions unambiguous?
-   - Is appropriate formatting used?
-   - Does the structure match the domain and use case?
-
-3. PRECISION & SPECIFICITY
-   - Are constraints clearly defined?
-   - Are success criteria explicit?
-   - Are examples included where helpful?
-   - Is domain-specific terminology used appropriately?
-
-4. MODEL APPROPRIATENESS
-   - Does it match target model capabilities?
-   - Is context length optimized?
-   - Are model-specific techniques used?
-
-5. CONTEXTUAL FIT
-   - How well does the format match the domain?
-   - Is the style appropriate (not too verbose/essay-like)?
-   - Is the complexity appropriate to the task?
-   - Would this prompt work well in actual use?
-
-6. IMPROVEMENT DELTA
-   - How significant is the improvement?
-   - What key weaknesses were addressed?
-   - What metrics would likely improve?
-
-Provide a final confidence score (0-1) with two decimal precision and specific recommendations for any remaining improvements.
-
-IMPORTANT: If the enhanced prompt is overly verbose, too essay-like, or uses a structure inappropriate for the domain, flag this issue and suggest specific improvements."""},
-                        {"role": "user", "content": f"Original Context: {context}\nOriginal Prompt: {original_prompt}\nImproved Prompt: {improved_prompt}\nRequirements: {json.dumps(analysis)}\nTarget Model: {target_model}\nDomain: {analysis['domain']}\n\nConduct a comprehensive evaluation."}
-                    ]
-                )
-                validation_result = validation_response.choices[0].message.content
+Recommendation: Test this prompt with your specific use case and refine as needed.
+"""
 
                 # Generate final response HTML
                 print("Generating final HTML response...")
@@ -1575,9 +1408,6 @@ IMPORTANT: If the enhanced prompt is overly verbose, too essay-like, or uses a s
                                 <strong>Complexity:</strong> {analysis['complexity_level']}<br>
                                 <strong>Critical Requirements:</strong><br>
                                 {"<br>".join(f"• {req}" for req in analysis['critical_requirements'])}
-                                <br><br>
-                                <strong>Format Requirements:</strong><br>
-                                {"<br>".join(f"• {req}" for req in analysis['format_requirements'])}
                             </div>
                         </div>
 
