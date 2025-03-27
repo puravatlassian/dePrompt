@@ -469,7 +469,7 @@ BASE_TEMPLATE = """
         .info-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
+            gap: 24px;
             margin-bottom: 24px;
         }
 
@@ -657,27 +657,27 @@ BASE_TEMPLATE = """
         /* Validation Styles */
         .validation-summary {
             font-size: 16px;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             font-weight: 500;
             color: var(--ds-text-selected, #DEEBFF);
-            padding: 0 0 8px 0;
+            padding: 10px 0;
             border-bottom: 1px solid var(--ds-border, #404040);
         }
         
         .score-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 12px;
-            margin-bottom: 15px;
+            gap: 16px;
+            margin-bottom: 20px;
         }
         
         .score-item {
-            margin-bottom: 10px;
+            margin-bottom: 15px;
         }
         
         .score-label {
             font-weight: 500;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
             font-size: 14px;
         }
         
@@ -687,7 +687,7 @@ BASE_TEMPLATE = """
             border-radius: 6px;
             position: relative;
             overflow: hidden;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
         }
         
         .score-bar {
@@ -708,11 +708,10 @@ BASE_TEMPLATE = """
             font-size: 12px;
             color: var(--ds-text-subtle, #9FADBC);
             line-height: 1.4;
-            margin-top: 1px;
         }
         
         .confidence-container {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
         
         .confidence-label {
@@ -745,78 +744,52 @@ BASE_TEMPLATE = """
         }
         
         .validation-sections {
-            margin-top: 15px;
+            margin-top: 25px;
         }
         
         .validation-section {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
         
         .validation-section h4 {
             font-size: 14px;
             font-weight: 500;
-            margin-bottom: 6px;
-            margin-top: 0;
+            margin-bottom: 10px;
             color: var(--ds-text-selected, #DEEBFF);
         }
         
         .strength-list, .improvement-list, .critical-list {
             padding-left: 20px;
             margin: 0;
-            list-style-type: none;
         }
         
         .strength-item, .improvement-item, .critical-item {
-            margin-bottom: 4px;
+            margin-bottom: 6px;
             font-size: 13px;
-            line-height: 1.4;
-            position: relative;
-        }
-        
-        .strength-item:before, .improvement-item:before, .critical-item:before {
-            content: "";
-            position: absolute;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            left: -15px;
-            top: 6px;
+            line-height: 1.5;
         }
         
         .strength-item {
             color: #28A745;
         }
         
-        .strength-item:before {
-            background-color: #28A745;
-        }
-        
         .improvement-item {
             color: #FFC107;
-        }
-        
-        .improvement-item:before {
-            background-color: #FFC107;
         }
         
         .critical-item {
             color: #DC3545;
         }
         
-        .critical-item:before {
-            background-color: #DC3545;
-        }
-        
         .critical-section {
-            padding: 8px;
+            padding: 10px;
             border: 1px solid #DC3545;
             border-radius: 4px;
             background-color: rgba(220, 53, 69, 0.1);
-            margin-top: 10px;
         }
         
         .validation-card .content {
-            padding: 0;
+            padding: 5px;
         }
     </style>
 </head>
@@ -1654,14 +1627,11 @@ If the prompt is overly verbose, too essay-like, or uses a structure inappropria
         assessment = details.get('assessment', '')
         score_color = '#28A745' if score >= 8 else '#FFC107' if score >= 5 else '#DC3545'
         
-        # Ensure the width is explicitly set with a percentage value
-        score_width = max(1, score * 10)  # Minimum width of 1% to always show something
-        
         validation_html += f"""
             <div class="score-item">
                 <div class="score-label">{category.replace('_', ' ').title()}</div>
                 <div class="score-bar-container">
-                    <div class="score-bar" style="width: {score_width}%; background-color: {score_color};"></div>
+                    <div class="score-bar" style="width: {score*10}%; background-color: {score_color};"></div>
                     <span class="score-value">{score}/10</span>
                 </div>
                 <div class="score-assessment">{assessment}</div>
@@ -1672,16 +1642,13 @@ If the prompt is overly verbose, too essay-like, or uses a structure inappropria
     confidence = validation_result.get('confidence', 0)
     confidence_color = '#28A745' if confidence >= 0.8 else '#FFC107' if confidence >= 0.6 else '#DC3545'
     
-    # Ensure confidence width is explicitly set
-    confidence_width = max(1, confidence * 100)  # Minimum width of 1%
-    
     validation_html += f"""
         </div>
         
         <div class="confidence-container">
             <div class="confidence-label">Overall Confidence</div>
             <div class="confidence-bar-container">
-                <div class="confidence-bar" style="width: {confidence_width}%; background-color: {confidence_color};"></div>
+                <div class="confidence-bar" style="width: {confidence*100}%; background-color: {confidence_color};"></div>
                 <span class="confidence-value">{confidence:.2f}</span>
             </div>
         </div>
