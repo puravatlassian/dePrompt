@@ -653,6 +653,144 @@ BASE_TEMPLATE = """
             margin: 16px 0;
             max-width: 100%;
         }
+        
+        /* Validation Styles */
+        .validation-summary {
+            font-size: 16px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            color: var(--ds-text-selected, #DEEBFF);
+            padding: 10px 0;
+            border-bottom: 1px solid var(--ds-border, #404040);
+        }
+        
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .score-item {
+            margin-bottom: 15px;
+        }
+        
+        .score-label {
+            font-weight: 500;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .score-bar-container {
+            height: 12px;
+            background-color: var(--ds-surface-sunken, #161A1D);
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+        
+        .score-bar {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.5s ease-in-out;
+        }
+        
+        .score-value {
+            position: absolute;
+            right: 5px;
+            top: -1px;
+            font-size: 11px;
+            color: var(--ds-text-subtle, #9FADBC);
+        }
+        
+        .score-assessment {
+            font-size: 12px;
+            color: var(--ds-text-subtle, #9FADBC);
+            line-height: 1.4;
+        }
+        
+        .confidence-container {
+            margin-bottom: 20px;
+        }
+        
+        .confidence-label {
+            font-weight: 500;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .confidence-bar-container {
+            height: 16px;
+            background-color: var(--ds-surface-sunken, #161A1D);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .confidence-bar {
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.5s ease-in-out;
+        }
+        
+        .confidence-value {
+            position: absolute;
+            right: 10px;
+            top: 0;
+            font-size: 12px;
+            color: var(--ds-text-inverse, #FFFFFF);
+            font-weight: 500;
+        }
+        
+        .validation-sections {
+            margin-top: 25px;
+        }
+        
+        .validation-section {
+            margin-bottom: 20px;
+        }
+        
+        .validation-section h4 {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 10px;
+            color: var(--ds-text-selected, #DEEBFF);
+        }
+        
+        .strength-list, .improvement-list, .critical-list {
+            padding-left: 20px;
+            margin: 0;
+        }
+        
+        .strength-item, .improvement-item, .critical-item {
+            margin-bottom: 6px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        .strength-item {
+            color: #28A745;
+        }
+        
+        .improvement-item {
+            color: #FFC107;
+        }
+        
+        .critical-item {
+            color: #DC3545;
+        }
+        
+        .critical-section {
+            padding: 10px;
+            border: 1px solid #DC3545;
+            border-radius: 4px;
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+        
+        .validation-card .content {
+            padding: 5px;
+        }
     </style>
 </head>
 <body>
@@ -1376,49 +1514,193 @@ Your considerations should be practical, specific, and immediately useful to the
         model="o3-mini",
         messages=[
             {"role": "system", "content": """Conduct a rigorous evaluation of the improved prompt against the original prompt and requirements.
-            
-Assessment criteria (rate each on scale of 1-10):
+
+Your response MUST be a valid JSON object with the following structure:
+{
+  "summary": "Brief 1-2 sentence overall assessment",
+  "scores": {
+    "completeness": {
+      "score": 8,
+      "assessment": "Brief explanation of score"
+    },
+    "clarity": {
+      "score": 8,
+      "assessment": "Brief explanation of score"
+    },
+    "precision": {
+      "score": 8,
+      "assessment": "Brief explanation of score"
+    },
+    "model_fit": {
+      "score": 8,
+      "assessment": "Brief explanation of score"
+    },
+    "contextual_fit": {
+      "score": 8,
+      "assessment": "Brief explanation of score"
+    },
+    "improvement": {
+      "score": 8,
+      "assessment": "Brief explanation of score"
+    }
+  },
+  "confidence": 0.85,
+  "top_strengths": [
+    "Key strength 1",
+    "Key strength 2",
+    "Key strength 3"
+  ],
+  "improvement_areas": [
+    "Area for improvement 1",
+    "Area for improvement 2"
+  ],
+  "critical_issues": [
+    "Critical issue 1 (if any)"
+  ]
+}
+
+Each score should be on a scale of 1-10 based on these criteria:
 
 1. COMPLETENESS
    - Are all user requirements addressed?
    - Are all edge cases covered?
    - Is there sufficient context included?
 
-2. CLARITY & STRUCTURE
+2. CLARITY
    - Is the prompt clearly organized?
    - Are instructions unambiguous?
    - Is appropriate formatting used?
    - Does the structure match the domain and use case?
 
-3. PRECISION & SPECIFICITY
+3. PRECISION
    - Are constraints clearly defined?
    - Are success criteria explicit?
    - Are examples included where helpful?
    - Is domain-specific terminology used appropriately?
 
-4. MODEL APPROPRIATENESS
+4. MODEL_FIT
    - Does it match target model capabilities?
    - Is context length optimized?
    - Are model-specific techniques used?
 
-5. CONTEXTUAL FIT
+5. CONTEXTUAL_FIT
    - How well does the format match the domain?
    - Is the style appropriate (not too verbose/essay-like)?
    - Is the complexity appropriate to the task?
    - Would this prompt work well in actual use?
 
-6. IMPROVEMENT DELTA
-   - How significant is the improvement?
+6. IMPROVEMENT
+   - How significant is the improvement over the original?
    - What key weaknesses were addressed?
    - What metrics would likely improve?
 
-Provide a final confidence score (0-1) with two decimal precision and specific recommendations for any remaining improvements.
-
-IMPORTANT: If the enhanced prompt is overly verbose, too essay-like, or uses a structure inappropriate for the domain, flag this issue and suggest specific improvements."""},
+IMPORTANT: Ensure your response is ONLY the JSON object with no additional text before or after.
+If the prompt is overly verbose, too essay-like, or uses a structure inappropriate for the domain, include this issue in the critical_issues array with a specific recommendation."""},
             {"role": "user", "content": f"Original Context: {context}\nOriginal Prompt: {original_prompt}\nImproved Prompt: {improved_prompt}\nRequirements: {json.dumps(analysis)}\nTarget Model: {target_model}\nDomain: {analysis['domain']}\n\nConduct a comprehensive evaluation."}
         ]
     )
-    validation_result = validation_response.choices[0].message.content
+    
+    # Parse the validation response
+    try:
+        validation_result = json.loads(validation_response.choices[0].message.content)
+    except:
+        # If parsing fails, use the raw text
+        validation_result = {
+            "summary": "Unable to parse validation results",
+            "scores": {},
+            "confidence": 0,
+            "top_strengths": [],
+            "improvement_areas": ["Unable to parse structured validation. Please try again."],
+            "critical_issues": ["Validation parsing error"]
+        }
+
+    # Generate the HTML for the validation display
+    validation_html = f"""
+        <div class="validation-summary">{validation_result.get('summary', '')}</div>
+        
+        <div class="score-grid">
+    """
+    
+    # Add score bars for each category
+    for category, details in validation_result.get('scores', {}).items():
+        score = details.get('score', 0)
+        assessment = details.get('assessment', '')
+        score_color = '#28A745' if score >= 8 else '#FFC107' if score >= 5 else '#DC3545'
+        
+        validation_html += f"""
+            <div class="score-item">
+                <div class="score-label">{category.replace('_', ' ').title()}</div>
+                <div class="score-bar-container">
+                    <div class="score-bar" style="width: {score*10}%; background-color: {score_color};"></div>
+                    <span class="score-value">{score}/10</span>
+                </div>
+                <div class="score-assessment">{assessment}</div>
+            </div>
+        """
+    
+    # Add confidence score
+    confidence = validation_result.get('confidence', 0)
+    confidence_color = '#28A745' if confidence >= 0.8 else '#FFC107' if confidence >= 0.6 else '#DC3545'
+    
+    validation_html += f"""
+        </div>
+        
+        <div class="confidence-container">
+            <div class="confidence-label">Overall Confidence</div>
+            <div class="confidence-bar-container">
+                <div class="confidence-bar" style="width: {confidence*100}%; background-color: {confidence_color};"></div>
+                <span class="confidence-value">{confidence:.2f}</span>
+            </div>
+        </div>
+        
+        <div class="validation-sections">
+            <div class="validation-section">
+                <h4>Top Strengths</h4>
+                <ul class="strength-list">
+    """
+    
+    # Add strengths
+    for strength in validation_result.get('top_strengths', []):
+        validation_html += f"""<li class="strength-item">{strength}</li>"""
+    
+    validation_html += """
+                </ul>
+            </div>
+            
+            <div class="validation-section">
+                <h4>Areas for Improvement</h4>
+                <ul class="improvement-list">
+    """
+    
+    # Add improvement areas
+    for area in validation_result.get('improvement_areas', []):
+        validation_html += f"""<li class="improvement-item">{area}</li>"""
+    
+    validation_html += """
+                </ul>
+            </div>
+    """
+    
+    # Add critical issues if present
+    if validation_result.get('critical_issues', []):
+        validation_html += """
+            <div class="validation-section critical-section">
+                <h4>Critical Issues</h4>
+                <ul class="critical-list">
+        """
+        
+        for issue in validation_result.get('critical_issues', []):
+            if issue:  # Only add non-empty issues
+                validation_html += f"""<li class="critical-item">{issue}</li>"""
+        
+        validation_html += """
+                </ul>
+            </div>
+        """
+    
+    validation_html += """
+        </div>
+    """
 
     content = f"""
         <h2 style="color: var(--ds-text-selected, #DEEBFF); margin-bottom: 32px;"><span class="brand-prefix">de</span>Prompt Results</h2>
@@ -1452,9 +1734,9 @@ IMPORTANT: If the enhanced prompt is overly verbose, too essay-like, or uses a s
                 <div class="content">{considerations}</div>
             </div>
 
-            <div class="info-card">
+            <div class="info-card validation-card">
                 <div class="card-title">Validation Results</div>
-                <div class="content">{validation_result}</div>
+                <div class="content">{validation_html}</div>
             </div>
         </div>
         
