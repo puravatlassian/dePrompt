@@ -1,11 +1,8 @@
 services:
   - type: web
     name: deprompt
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    env: docker
+    dockerfilePath: ./Dockerfile
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.9.0
       - key: API_KEY
         sync: false 
