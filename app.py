@@ -1366,6 +1366,7 @@ Remember: It's better to ask one more question than to miss critical context."""
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    # Start the Flask development server on port 5002 to avoid conflicts
-    # Created by Purav Bhardwaj, March 2025
-    app.run(debug=True, port=5002)
+    # Get port from environment variable for production
+    port = int(os.environ.get("PORT", 5002))
+    # Start the Flask server
+    app.run(host='0.0.0.0', port=port, debug=False)
