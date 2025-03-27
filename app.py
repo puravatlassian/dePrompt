@@ -200,6 +200,14 @@ BASE_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <title>dePrompt - AI Prompt Engineering Assistant</title>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-E3QSCYVVRG"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-E3QSCYVVRG');
+    </script>
     <link rel="stylesheet" href="https://unpkg.com/@atlaskit/css-reset@6.0.1/dist/bundle.css" />
     <link rel="stylesheet" href="https://unpkg.com/@atlaskit/tokens@0.13.0/css/tokens.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;600&display=swap" rel="stylesheet">
@@ -685,11 +693,37 @@ BASE_TEMPLATE = """
         let messageIndex = 0;
         let interval = null;
 
-        // Attach AJAX submission handler to the form (if present)
+        // Track page views and start time tracking
+        gtag('event', 'page_view', {
+            page_title: document.title,
+            page_location: window.location.href
+        });
+
+        // Track time spent on page
+        let startTime = Date.now();
+        window.addEventListener('beforeunload', function() {
+            const timeSpent = Math.round((Date.now() - startTime) / 1000); // Convert to seconds
+            gtag('event', 'time_spent', {
+                time_spent_seconds: timeSpent,
+                page_title: document.title
+            });
+        });
+
+        // Track prompts per session
+        let promptsInSession = 0;
         const form = document.getElementById('improveForm');
         if (form) {
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
+                promptsInSession++;
+                
+                // Track form submission
+                gtag('event', 'prompt_enhancement_started', {
+                    target_model: document.getElementById('target_model').value,
+                    has_context: document.getElementById('context-toggle').checked,
+                    prompts_in_session: promptsInSession
+                });
+
                 // Show loader and start cycling messages
                 document.getElementById('loadingIndicator').style.display = 'flex';
                 interval = setInterval(function() {
@@ -705,16 +739,89 @@ BASE_TEMPLATE = """
                 })
                 .then(response => response.json())
                 .then(data => {
+                    // Track successful enhancement
+                    gtag('event', 'prompt_enhancement_completed', {
+                        target_model: document.getElementById('target_model').value,
+                        has_context: document.getElementById('context-toggle').checked,
+                        prompts_in_session: promptsInSession,
+                        success: true
+                    });
+
                     // Stop loader and update content
                     clearInterval(interval);
                     document.getElementById('loadingIndicator').style.display = 'none';
                     document.getElementById('pageContainer').innerHTML = data.html;
                 })
                 .catch(err => {
+                    // Track error
+                    gtag('event', 'prompt_enhancement_error', {
+                        target_model: document.getElementById('target_model').value,
+                        error_message: err.message,
+                        prompts_in_session: promptsInSession,
+                        success: false
+                    });
+
                     clearInterval(interval);
                     document.getElementById('loadingIndicator').style.display = 'none';
                     alert("An error occurred while processing your request.");
                 });
+            });
+        }
+
+        // Track model selection changes
+        const modelSelect = document.getElementById('target_model');
+        if (modelSelect) {
+            modelSelect.addEventListener('change', function() {
+                gtag('event', 'model_selected', {
+                    model: this.value,
+                    prompts_in_session: promptsInSession
+                });
+            });
+        }
+
+        // Track context toggle
+        const contextToggle = document.getElementById('context-toggle');
+        if (contextToggle) {
+            contextToggle.addEventListener('change', function() {
+                gtag('event', 'context_mode_toggled', {
+                    enabled: this.checked,
+                    prompts_in_session: promptsInSession
+                });
+            });
+        }
+
+        // Enhanced conversation tracking
+        let conversationStartTime = null;
+        let messageCount = 0;
+        const sendButton = document.getElementById('send-button');
+        if (sendButton) {
+            sendButton.addEventListener('click', function() {
+                if (!conversationStartTime) {
+                    conversationStartTime = Date.now();
+                    gtag('event', 'conversation_started', {
+                        prompts_in_session: promptsInSession
+                    });
+                }
+                
+                messageCount++;
+                const userInput = document.getElementById('user-input');
+                const hasInput = userInput.value.trim().length > 0;
+                
+                gtag('event', 'conversation_message_sent', {
+                    has_input: hasInput,
+                    message_count: messageCount,
+                    prompts_in_session: promptsInSession
+                });
+
+                // Track conversation engagement
+                if (messageCount >= 3) {
+                    const conversationDuration = Math.round((Date.now() - conversationStartTime) / 1000);
+                    gtag('event', 'conversation_engaged', {
+                        duration_seconds: conversationDuration,
+                        message_count: messageCount,
+                        prompts_in_session: promptsInSession
+                    });
+                }
             });
         }
     });
